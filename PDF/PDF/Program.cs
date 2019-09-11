@@ -12,62 +12,46 @@ namespace PDF
     {
         static void Main(string[] args)
         {
-            //Create a string array of files in folder
+            //Create a string array of files in specific folder
             string[] fileEntries = Directory.GetFiles(@"C:\Users\ml\Desktop\PDF");
 
             foreach (string fileName in fileEntries)
             {
                 ProcessFile(fileName);
             }
+
+            Console.ReadLine();
         }
 
         public static void ProcessFile(string path)
         {
-            int index;
-            string fileName = path.Substring(path.LastIndexOf('\\') + 1);
-            List<string> pages = ExtractTextsFromAllPages(path);
+            string text = ExtractTextsFromAllPages(path);
 
-            //Removing undesired text from page 1
-            index = pages[0].IndexOf("3-5).");
-            pages[0] = pages[0].Substring(index + 5).Trim();
+            int pFrom = text.IndexOf("stk. 3-5).") + "stk. 3-5).".Length;
+            int pTo = text.LastIndexOf("BILAG");
 
-            //Removing undesired text from page 2
-            index = pages[1].IndexOf("Som lejer");
-            pages[1] = pages[1].Replace("Som udlejer", "").Substring(index + 9).Trim();
-            index = pages[1].IndexOf("   \r\n \r\n");
-            if(index != -1)
-            {
-                pages[1] = pages[1].Substring(index).Trim();
-            }
+            string result = text.Substring(pFrom, pTo - pFrom).Trim()
+                .Replace("§ 12.  Underskrift", "")
+                .Replace("Dato: ", "")
+                .Replace("Som udlejer", "")
+                .Replace("Som lejer", "");
 
-            SavePDF(pages, fileName);
+            Console.WriteLine(result);       
         }
 
-        public static List<string> ExtractTextsFromAllPages(string path)
+        public static string ExtractTextsFromAllPages(string path)
         {
-            List<string> pages = new List<string>();
+            var sb = new StringBuilder();
             using (var doc = new Doc())
             {
                 doc.Read(path);
-                for (var currentPageNumber = 5; currentPageNumber <= 6; currentPageNumber++)
+                for (var currentPageNumber = 1; currentPageNumber <= doc.PageCount; currentPageNumber++)
                 {
                     doc.PageNumber = currentPageNumber;
-                    pages.Add(doc.GetText("text"));
+                    sb.Append(doc.GetText("text").Replace("Side " + currentPageNumber + " af " + doc.PageCount, ""));
                 }
             }
-            return pages;
-        }
-
-        public static void SavePDF(List<string> pages, string fileName)
-        {
-            using (Doc doc = new Doc())
-            {
-                doc.FontSize = 12;
-                doc.AddText(pages[0]);
-                doc.Page = doc.AddPage();
-                doc.AddText(pages[1]);
-                doc.Save(@"C:\Users\ml\Desktop\New\" + fileName);
-            }
+            return sb.ToString();
         }
     }
 }
